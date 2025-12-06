@@ -202,8 +202,12 @@ def test_airdrop_claimer():
     
     print(f"  Check-only stats: {stats}")
     assert stats['total_wallets'] == 2, "Should check 2 wallets"
-    assert stats['total_checks'] >= 2, "Should perform at least 2 checks"
+    # Note: total_checks may be less than total_wallets due to anti-detection skipping
+    assert stats['total_checks'] >= 1, "Should perform at least 1 check"
     assert stats['eligible'] >= 0, "Should find eligible wallets"
+    
+    # Total checks + skipped should equal wallets processed
+    assert stats['total_checks'] + stats['skipped'] == 2, "Checks + skips should equal total wallets"
     
     # Verify claims were recorded in database
     with get_db_session() as session:
