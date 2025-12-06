@@ -123,6 +123,11 @@ class WalletManager:
         if not self.seed_mnemonic:
             raise ValueError("No seed mnemonic available")
         
+        # Validate mnemonic before derivation
+        mnemo = Mnemonic("english")
+        if not mnemo.check(self.seed_mnemonic):
+            raise ValueError("Invalid BIP39 mnemonic phrase")
+        
         # Derive account from mnemonic
         account = Account.from_mnemonic(
             self.seed_mnemonic,

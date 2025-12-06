@@ -57,7 +57,9 @@ class TwoCaptchaSolver(CaptchaSolver):
             from twocaptcha import TwoCaptcha
             self.solver = TwoCaptcha(api_key)
         except ImportError:
-            logger.error("2captcha-python not installed")
+            logger.error(
+                "2captcha-python not installed. Install with: pip install 2captcha-python"
+            )
             self.solver = None
     
     def solve(
@@ -152,7 +154,9 @@ class AntiCaptchaSolver(CaptchaSolver):
             self.hcaptcha_solver = hCaptchaProxyless()
             self.hcaptcha_solver.set_key(api_key)
         except ImportError:
-            logger.error("anticaptchaofficial not installed")
+            logger.error(
+                "anticaptchaofficial not installed. Install with: pip install anticaptchaofficial"
+            )
             self.recaptcha_solver = None
             self.hcaptcha_solver = None
     

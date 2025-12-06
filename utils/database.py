@@ -171,11 +171,21 @@ class DatabaseManager:
         
     def initialize(self):
         """Initialize database engine and create tables."""
+        from urllib.parse import urlparse
+        
+        # Parse database URL
+        parsed = urlparse(self.database_url)
+        
         # Ensure data directory exists for SQLite
-        if self.database_url.startswith('sqlite'):
-            db_path = self.database_url.replace('sqlite:///', '')
+        if parsed.scheme == 'sqlite':
+            # Extract path from SQLite URL properly
+            db_path = parsed.path.lstrip('/')
             if db_path and db_path != ':memory:':
-                os.makedirs(os.path.dirname(db_path) if os.path.dirname(db_path) else 'data', exist_ok=True)
+                db_dir = os.path.dirname(db_path)
+                if db_dir:
+                    os.makedirs(db_dir, exist_ok=True)
+                else:
+                    os.makedirs('data', exist_ok=True)
             
             # SQLite-specific settings
             self.engine = create_engine(

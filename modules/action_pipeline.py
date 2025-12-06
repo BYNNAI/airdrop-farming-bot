@@ -139,9 +139,12 @@ class EVMActionAdapter(ActionAdapter):
         # In production, integrate with Web3.py and staking contracts
         await asyncio.sleep(random.uniform(2, 5))
         
+        # Generate a clearly marked mock transaction hash
+        mock_tx_hash = "0x" + "00" * 31 + "01_MOCK_STAKE"
+        
         return {
             'success': True,
-            'tx_hash': f"0x{'0'*64}",  # Mock tx hash
+            'tx_hash': mock_tx_hash,
             'amount': amount,
             'validator': validator
         }
@@ -168,9 +171,11 @@ class EVMActionAdapter(ActionAdapter):
         # In production, integrate with Uniswap/PancakeSwap/etc.
         await asyncio.sleep(random.uniform(2, 5))
         
+        mock_tx_hash = "0x" + "11" * 31 + "02_MOCK_SWAP"
+        
         return {
             'success': True,
-            'tx_hash': f"0x{'1'*64}",
+            'tx_hash': mock_tx_hash,
             'from_token': from_token,
             'to_token': to_token,
             'amount_in': amount,
@@ -197,9 +202,11 @@ class EVMActionAdapter(ActionAdapter):
         # In production, integrate with bridge protocols
         await asyncio.sleep(random.uniform(5, 10))
         
+        mock_tx_hash = "0x" + "22" * 31 + "03_MOCK_BRIDGE"
+        
         return {
             'success': True,
-            'tx_hash': f"0x{'2'*64}",
+            'tx_hash': mock_tx_hash,
             'from_chain': self.chain,
             'to_chain': to_chain,
             'amount': amount

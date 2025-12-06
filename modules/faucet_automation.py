@@ -430,6 +430,25 @@ class FaucetWorker:
                         json=payload,
                         proxy=proxy
                     ) as response:
+                        # Handle specific status codes
+                        if response.status == 429:
+                            error_text = await response.text()
+                            logger.warning(
+                                "faucet_rate_limited",
+                                url=url,
+                                response_body=error_text[:200]
+                            )
+                            raise Exception(f"Rate limited: {error_text[:100]}")
+                        elif response.status >= 500:
+                            error_text = await response.text()
+                            logger.error(
+                                "faucet_server_error",
+                                url=url,
+                                status=response.status,
+                                response_body=error_text[:200]
+                            )
+                            raise Exception(f"Server error {response.status}: {error_text[:100]}")
+                        
                         return response.status in [200, 201]
                 else:
                     async with session.get(
@@ -437,10 +456,33 @@ class FaucetWorker:
                         params=payload,
                         proxy=proxy
                     ) as response:
+                        # Handle specific status codes
+                        if response.status == 429:
+                            error_text = await response.text()
+                            logger.warning(
+                                "faucet_rate_limited",
+                                url=url,
+                                response_body=error_text[:200]
+                            )
+                            raise Exception(f"Rate limited: {error_text[:100]}")
+                        elif response.status >= 500:
+                            error_text = await response.text()
+                            logger.error(
+                                "faucet_server_error",
+                                url=url,
+                                status=response.status,
+                                response_body=error_text[:200]
+                            )
+                            raise Exception(f"Server error {response.status}: {error_text[:100]}")
+                        
                         return response.status in [200, 201]
             
             except aiohttp.ClientError as e:
-                logger.warning(f"Faucet request failed: {e}")
+                logger.warning(
+                    "faucet_network_error",
+                    url=url,
+                    error=str(e)
+                )
                 return False
 
 
