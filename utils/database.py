@@ -1,4 +1,12 @@
-"""Database models and connection management for airdrop farming."""
+"""
+Database models and connection management for airdrop farming.
+
+This module defines SQLAlchemy ORM models for wallets, faucet requests, actions,
+and metrics with support for both SQLite and PostgreSQL backends.
+
+Author: BYNNΛI
+License: MIT
+"""
 
 import os
 from datetime import datetime

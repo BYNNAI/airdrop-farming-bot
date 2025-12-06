@@ -1,3 +1,13 @@
+"""
+Configuration settings for airdrop farming system.
+
+This module provides centralized configuration management with environment variable
+support for network settings, timing parameters, and behavioral patterns.
+
+Author: BYNNΛI
+License: MIT
+"""
+
 import os
 from dotenv import load_dotenv
 

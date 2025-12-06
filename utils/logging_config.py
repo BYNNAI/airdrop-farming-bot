@@ -1,4 +1,12 @@
-"""Structured logging configuration with JSON output."""
+"""
+Structured logging configuration with JSON output.
+
+This module configures structured logging using structlog with JSON formatting
+for production-grade observability and log aggregation.
+
+Author: BYNNΛI
+License: MIT
+"""
 
 import os
 import sys

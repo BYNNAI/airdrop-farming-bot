@@ -1,4 +1,13 @@
-"""Eligibility actions pipeline with human-like behavior."""
+"""
+Eligibility actions pipeline with human-like behavior.
+
+This module provides a framework for executing blockchain actions (staking, swapping,
+bridging) with human-like timing patterns, randomization, and anti-detection measures
+to maximize airdrop eligibility while avoiding Sybil detection.
+
+Author: BYNNΛI
+License: MIT
+"""
 
 import os
 import time

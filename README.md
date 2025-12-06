@@ -1,6 +1,6 @@
 # Airdrop Farming
 
-🤖 **Sophisticated multi-chain testnet automation by Bynnovation**
+🤖 **Sophisticated multi-chain testnet automation by BYNNΛI**
 
 Professional-grade airdrop farming system with automated faucet claims, wallet orchestration, and human-like behavior patterns across 10+ blockchain networks.
 
@@ -448,7 +448,7 @@ MIT License - See LICENSE file for details
 
 ## ⚡ Support
 
-**By Bynnovation**
+**By BYNNΛI**
 
 For issues and questions:
 - Open a [GitHub Issue](https://github.com/theoraclescript/airdrop-farming/issues)

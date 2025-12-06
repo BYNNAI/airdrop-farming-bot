@@ -1,4 +1,13 @@
-"""Multi-chain faucet automation with cooldown management and human-like behavior."""
+"""
+Multi-chain faucet automation with cooldown management and human-like behavior.
+
+This module orchestrates automated faucet claims across multiple blockchain networks
+with built-in cooldown tracking, rate limiting, and anti-detection measures including
+IP rotation, user-agent spoofing, and randomized timing patterns.
+
+Author: BYNNΛI
+License: MIT
+"""
 
 import os
 import time

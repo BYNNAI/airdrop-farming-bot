@@ -1,4 +1,12 @@
-"""Pluggable captcha solving interface with multiple provider support."""
+"""
+Pluggable captcha solving interface with multiple provider support.
+
+This module provides an abstraction layer for various captcha solving services
+including 2Captcha, AntiCaptcha, and manual solving with a unified interface.
+
+Author: BYNNΛI
+License: MIT
+"""
 
 import os
 import time

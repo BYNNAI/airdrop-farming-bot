@@ -1,4 +1,13 @@
-"""HD wallet generation and management with encryption."""
+"""
+HD wallet generation and management with encryption.
+
+This module provides hierarchical deterministic (HD) wallet generation using BIP32/BIP39
+standards with support for multiple blockchain networks (EVM, Solana). All private keys
+are derived on-demand from an encrypted seed phrase for enhanced security.
+
+Author: BYNNΛI
+License: MIT
+"""
 
 import os
 from typing import List, Optional, Dict, Tuple
