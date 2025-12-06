@@ -1,6 +1,6 @@
 # Airdrop Farming
 
-🤖 **Sophisticated multi-chain testnet automation by Bynnovation**
+🤖 **Sophisticated multi-chain testnet automation by BYNNΛI**
 
 Professional-grade airdrop farming system with automated faucet claims, wallet orchestration, and human-like behavior patterns across 10+ blockchain networks.
 
@@ -50,6 +50,33 @@ This system is designed for **testnet environments only**. Always comply with pr
 - **Database Persistence**: SQLite (default) or PostgreSQL for state survival across restarts
 - **Dead Letter Queue**: Stalled task marking for repeated failures
 - **Error Classification**: Detailed error tracking and retry logic
+
+### 🛡️ Anti-Detection Controls
+- **IP Sharding & Rotation**: Configurable wallet-to-IP mapping with stickiness windows
+  - Separate policies for faucet vs RPC traffic
+  - Slow randomized rotation to avoid patterns
+  - Configurable shard sizes and sticky periods
+- **User-Agent Rotation**: Realistic browser UA pool with session persistence
+  - Automatic header generation mimicking real browsers
+  - Support for custom UA lists from file
+- **Scheduling Entropy**: Human-like activity patterns
+  - Configurable off-days and night/weekend lulls
+  - Day-part windows (morning/afternoon/evening preferences)
+  - Non-uniform inter-arrival jitter with multiple distributions
+  - Per-wallet skip-days for irregular patterns
+- **Faucet Behavior**: Sophisticated claiming patterns
+  - Over-cooldown slack (randomized beyond stated cooldown)
+  - Optional faucet skip probability to avoid 100% claim rate
+  - Faucet rotation and priority management
+- **Action Diversity**: Varied execution patterns
+  - Shuffled action order per shard/day
+  - Optional action skip probability
+  - One in-flight transaction per wallet per chain
+- **Auto-Throttle**: Intelligent rate limiting
+  - Detects spikes in 429/5xx/failures
+  - Auto-pause or slowdown problematic shards/cohorts
+  - Exponential backoff for repeated issues
+  - Automatic recovery after cooldown
 
 ### 🛠️ Developer Experience
 - **Rich CLI**: Beautiful command-line interface with progress bars and tables
@@ -143,6 +170,38 @@ DATABASE_URL=sqlite:///data/airdrop_farming.db
 USE_PROXIES=false
 PROXY_LIST=http://user:pass@ip:port,http://user:pass@ip2:port2
 ```
+
+**Anti-Detection Configuration (Optional):**
+```env
+# IP Management
+IP_SHARD_SIZE=10                    # Wallets per IP shard
+IP_STICKY_HOURS=24.0                # Default IP stickiness (hours)
+FAUCET_IP_STICKY_HOURS=24.0         # Faucet-specific stickiness
+RPC_IP_STICKY_HOURS=12.0            # RPC-specific stickiness
+
+# User-Agent Rotation
+UA_SESSION_DURATION_HOURS=12.0      # How long to stick with same UA
+
+# Scheduling Entropy
+OFF_DAYS=                           # Days to skip (0=Mon, 6=Sun): e.g., 6
+NIGHT_LULL_WINDOWS=0-6,22-24        # Night hours with reduced activity
+DAYPART_WINDOWS=morning:6-12,afternoon:12-18,evening:18-22
+WEEKEND_ACTIVITY_REDUCTION=0.3      # Weekend probability reduction
+NIGHT_ACTIVITY_REDUCTION=0.5        # Night probability reduction
+
+# Faucet Behavior
+OVER_COOLDOWN_JITTER_MIN=0.1        # Min overcooldown jitter (fraction)
+OVER_COOLDOWN_JITTER_MAX=0.3        # Max overcooldown jitter (fraction)
+FAUCET_SKIP_PROB=0.05               # Probability to skip faucet (0.0-1.0)
+ACTION_SKIP_PROB=0.1                # Probability to skip action (0.0-1.0)
+
+# Auto-Throttle
+AUTO_THROTTLE_ERROR_THRESHOLD=0.3   # Error rate to trigger throttle
+AUTO_THROTTLE_ERROR_WINDOW=300      # Time window for rate calc (seconds)
+AUTO_THROTTLE_PAUSE_DURATION=600    # Initial pause duration (seconds)
+```
+
+See `.env.example` for complete list of configuration options.
 
 ### 3. Faucet Configuration
 
@@ -342,6 +401,133 @@ To maximize airdrop eligibility while maintaining human-like behavior:
 - Randomize timing within configured ranges
 - Respect daily action limits per wallet
 
+## 🛡️ Anti-Detection Features Guide
+
+### IP Rotation Strategy
+
+The system supports sophisticated IP rotation with wallet sharding:
+
+```env
+# Assign 10 wallets per IP address
+IP_SHARD_SIZE=10
+
+# Keep same IP for 24 hours before rotating
+IP_STICKY_HOURS=24.0
+
+# Use different stickiness for faucets (longer) and RPC (shorter)
+FAUCET_IP_STICKY_HOURS=36.0
+RPC_IP_STICKY_HOURS=8.0
+```
+
+**How it works:**
+- Wallets are grouped into shards of configurable size
+- Each shard uses the same IP for a sticky period
+- Separate policies for faucet claims vs RPC calls
+- Slow rotation avoids sudden IP changes that trigger alerts
+
+### User-Agent Rotation
+
+Realistic browser User-Agents with session persistence:
+
+```env
+# Stick with same UA for 12 hours per session
+UA_SESSION_DURATION_HOURS=12.0
+
+# Optional: Load custom UA list from file
+UA_POOL_PATH=config/user-agents.txt
+```
+
+The system includes a built-in pool of realistic Chrome, Firefox, Safari, and Edge User-Agents.
+
+### Scheduling Entropy
+
+Create human-like activity patterns:
+
+```env
+# Take Sundays off (0=Monday, 6=Sunday)
+OFF_DAYS=6
+
+# Reduce activity at night and on weekends
+NIGHT_LULL_WINDOWS=0-6,22-24
+WEEKEND_ACTIVITY_REDUCTION=0.3
+NIGHT_ACTIVITY_REDUCTION=0.5
+
+# Prefer specific time windows
+DAYPART_WINDOWS=morning:6-12,afternoon:12-18,evening:18-22
+```
+
+**Benefits:**
+- Avoids 24/7 bot-like patterns
+- Creates realistic weekly/daily rhythms
+- Random skip-days per wallet for irregularity
+
+### Faucet Behavior Controls
+
+Avoid perfect claiming patterns:
+
+```env
+# Add 10-30% extra delay beyond stated cooldowns
+OVER_COOLDOWN_JITTER_MIN=0.1
+OVER_COOLDOWN_JITTER_MAX=0.3
+
+# Randomly skip 5% of faucet claims
+FAUCET_SKIP_PROB=0.05
+```
+
+This prevents the system from claiming exactly when cooldowns expire, which is a telltale bot pattern.
+
+### Auto-Throttle Protection
+
+Automatically detect and respond to rate limiting:
+
+```env
+# Throttle if error rate exceeds 30%
+AUTO_THROTTLE_ERROR_THRESHOLD=0.3
+
+# Pause for 10 minutes when throttled
+AUTO_THROTTLE_PAUSE_DURATION=600
+
+# Apply exponential backoff for repeated issues
+AUTO_THROTTLE_BACKOFF_MULTIPLIER=2.0
+```
+
+**How it works:**
+- Monitors 429 and 5xx responses per shard
+- Automatically pauses problematic shards
+- Exponential backoff for repeated throttles
+- Auto-recovery when error rates normalize
+
+### Recommended Configuration Profiles
+
+**Conservative (Maximum Safety):**
+```env
+IP_SHARD_SIZE=5
+FAUCET_SKIP_PROB=0.15
+ACTION_SKIP_PROB=0.20
+OVER_COOLDOWN_JITTER_MIN=0.2
+OVER_COOLDOWN_JITTER_MAX=0.5
+OFF_DAYS=6
+WEEKEND_ACTIVITY_REDUCTION=0.5
+```
+
+**Balanced (Default):**
+```env
+IP_SHARD_SIZE=10
+FAUCET_SKIP_PROB=0.05
+ACTION_SKIP_PROB=0.1
+OVER_COOLDOWN_JITTER_MIN=0.1
+OVER_COOLDOWN_JITTER_MAX=0.3
+```
+
+**Aggressive (Higher Throughput, Higher Risk):**
+```env
+IP_SHARD_SIZE=20
+FAUCET_SKIP_PROB=0.02
+ACTION_SKIP_PROB=0.05
+OVER_COOLDOWN_JITTER_MIN=0.05
+OVER_COOLDOWN_JITTER_MAX=0.15
+```
+
 ## 🌐 Supported Networks
 
 ### EVM Chains
@@ -448,7 +634,7 @@ MIT License - See LICENSE file for details
 
 ## ⚡ Support
 
-**By Bynnovation**
+**By BYNNΛI**
 
 For issues and questions:
 - Open a [GitHub Issue](https://github.com/theoraclescript/airdrop-farming/issues)

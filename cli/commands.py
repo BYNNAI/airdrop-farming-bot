@@ -1,4 +1,12 @@
-"""Command-line interface for airdrop farming operations."""
+"""
+Command-line interface for airdrop farming operations.
+
+This module provides a comprehensive CLI for managing multi-chain testnet wallets,
+faucet automation, and eligibility actions with anti-detection capabilities.
+
+Author: BYNNΛI
+License: MIT
+"""
 
 import os
 import sys
@@ -29,7 +37,7 @@ logger = get_logger(__name__)
 @click.option('--log-level', default='INFO', help='Log level (DEBUG, INFO, WARNING, ERROR)')
 @click.option('--db-url', help='Database URL override')
 def cli(log_level, db_url):
-    """Airdrop Farming - Multi-chain testnet automation by Bynnovation."""
+    """Airdrop Farming - Multi-chain testnet automation by BYNNΛI."""
     # Configure logging
     configure_logging(log_level=log_level)
     
@@ -50,16 +58,16 @@ def seed(generate, word_count):
     if generate:
         mnemonic = wallet_manager.generate_mnemonic(int(word_count))
         
-        console.print("\n[bold red]⚠️  IMPORTANT - SAVE THIS SECURELY![/bold red]")
+        console.print("\n[bold red]IMPORTANT - SAVE THIS SECURELY![/bold red]")
         console.print("\n[yellow]Your new seed phrase:[/yellow]")
         console.print(f"\n[bold cyan]{mnemonic}[/bold cyan]\n")
         console.print("[yellow]Add this to your .env file as WALLET_SEED_MNEMONIC[/yellow]")
         console.print("[red]Never share this with anyone or commit it to version control![/red]\n")
     else:
         if wallet_manager.seed_mnemonic:
-            console.print("[green]✓ Seed mnemonic is configured[/green]")
+            console.print("[green]Seed mnemonic is configured[/green]")
         else:
-            console.print("[red]✗ No seed mnemonic found. Run with --generate to create one.[/red]")
+            console.print("[red]No seed mnemonic found. Run with --generate to create one.[/red]")
 
 
 @cli.command()
@@ -100,7 +108,7 @@ def create_wallets(count, chains, shard_size):
         table.add_row(chain, str(len(addresses)))
     
     console.print(table)
-    console.print(f"\n[green]✓ Successfully generated wallets![/green]\n")
+    console.print(f"\n[green]Successfully generated wallets![/green]\n")
 
 
 @cli.command()

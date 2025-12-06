@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Airdrop Farming - Multi-chain testnet automation
-By Bynnovation
+By BYNNΛI
 
 Main entry point for the airdrop farming system.
 """

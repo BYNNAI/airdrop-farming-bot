@@ -1,3 +1,13 @@
+"""
+Configuration settings for airdrop farming system.
+
+This module provides centralized configuration management with environment variable
+support for network settings, timing parameters, and behavioral patterns.
+
+Author: BYNNΛI
+License: MIT
+"""
+
 import os
 from dotenv import load_dotenv
 
@@ -70,7 +80,7 @@ class Config:
     LOG_ROTATION = '100 MB'
     LOG_RETENTION = '30 days'
     
-    # Anti-Detection
+    # Anti-Detection: Basic
     RANDOMIZE_USER_AGENT = True
     HUMAN_LIKE_DELAYS = True
     BEHAVIOR_PATTERNS = {
@@ -78,6 +88,39 @@ class Config:
         'day_trader': {'start_hour': 10, 'end_hour': 18},
         'night_owl': {'start_hour': 20, 'end_hour': 2}
     }
+    
+    # Anti-Detection: IP Management
+    IP_SHARD_SIZE = int(os.getenv('IP_SHARD_SIZE', 10))
+    IP_STICKY_HOURS = float(os.getenv('IP_STICKY_HOURS', 24.0))
+    FAUCET_IP_STICKY_HOURS = float(os.getenv('FAUCET_IP_STICKY_HOURS', 24.0))
+    RPC_IP_STICKY_HOURS = float(os.getenv('RPC_IP_STICKY_HOURS', 12.0))
+    IP_ROTATION_JITTER_PCT = float(os.getenv('IP_ROTATION_JITTER_PCT', 0.2))
+    
+    # Anti-Detection: User-Agent Rotation
+    UA_POOL_PATH = os.getenv('UA_POOL_PATH', '')
+    UA_LIST = os.getenv('UA_LIST', '')
+    UA_SESSION_DURATION_HOURS = float(os.getenv('UA_SESSION_DURATION_HOURS', 12.0))
+    
+    # Anti-Detection: Scheduling Entropy
+    OFF_DAYS = os.getenv('OFF_DAYS', '')
+    NIGHT_LULL_WINDOWS = os.getenv('NIGHT_LULL_WINDOWS', '0-6,22-24')
+    DAYPART_WINDOWS = os.getenv('DAYPART_WINDOWS', 'morning:6-12,afternoon:12-18,evening:18-22')
+    WEEKEND_ACTIVITY_REDUCTION = float(os.getenv('WEEKEND_ACTIVITY_REDUCTION', 0.3))
+    NIGHT_ACTIVITY_REDUCTION = float(os.getenv('NIGHT_ACTIVITY_REDUCTION', 0.5))
+    
+    # Anti-Detection: Faucet Behavior
+    OVER_COOLDOWN_JITTER_MIN = float(os.getenv('OVER_COOLDOWN_JITTER_MIN', 0.1))
+    OVER_COOLDOWN_JITTER_MAX = float(os.getenv('OVER_COOLDOWN_JITTER_MAX', 0.3))
+    FAUCET_SKIP_PROB = float(os.getenv('FAUCET_SKIP_PROB', 0.05))
+    ACTION_SKIP_PROB = float(os.getenv('ACTION_SKIP_PROB', 0.1))
+    
+    # Anti-Detection: Auto-Throttle
+    AUTO_THROTTLE_ERROR_THRESHOLD = float(os.getenv('AUTO_THROTTLE_ERROR_THRESHOLD', 0.3))
+    AUTO_THROTTLE_ERROR_WINDOW = int(os.getenv('AUTO_THROTTLE_ERROR_WINDOW', 300))
+    AUTO_THROTTLE_MIN_SAMPLES = int(os.getenv('AUTO_THROTTLE_MIN_SAMPLES', 10))
+    AUTO_THROTTLE_PAUSE_DURATION = int(os.getenv('AUTO_THROTTLE_PAUSE_DURATION', 600))
+    AUTO_THROTTLE_BACKOFF_MULTIPLIER = float(os.getenv('AUTO_THROTTLE_BACKOFF_MULTIPLIER', 2.0))
+    AUTO_THROTTLE_MAX_PAUSE = int(os.getenv('AUTO_THROTTLE_MAX_PAUSE', 3600))
     
     # Transaction Gas Settings
     GAS_PRICE_MULTIPLIER = 1.1
