@@ -170,7 +170,7 @@ class AirdropClaim(Base):
     airdrop_name = Column(String(255), nullable=False, index=True)
     chain = Column(String(50), nullable=False)
     status = Column(String(50), default='pending', index=True)
-    # Status: pending, eligible, claimed, failed, ineligible
+    # Status: eligible, claimed, failed, ineligible
     
     amount_claimed = Column(String(100))
     tx_hash = Column(String(255))

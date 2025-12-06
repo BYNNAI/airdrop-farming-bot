@@ -154,7 +154,7 @@ class EligibilityChecker:
     
     def __init__(self):
         """Initialize eligibility checker."""
-        self.wallet_manager = WalletManager()
+        pass
     
     async def check_eligibility(
         self,
@@ -597,7 +597,7 @@ class AirdropClaimer:
         )
         
         # Simulated transaction hash
-        tx_hash = '0x' + ''.join(random.choices('0123456789abcdef', k=64))
+        tx_hash = '0x' + ''.join([random.choice('0123456789abcdef') for _ in range(64)])
         
         # Simulate network delay
         await asyncio.sleep(random.uniform(1.0, 3.0))
@@ -635,7 +635,7 @@ class AirdropClaimer:
         )
         
         # Simulated claim ID
-        claim_id = '0x' + ''.join(random.choices('0123456789abcdef', k=64))
+        claim_id = '0x' + ''.join([random.choice('0123456789abcdef') for _ in range(64)])
         
         # Simulate API delay
         await asyncio.sleep(random.uniform(0.5, 2.0))
@@ -675,7 +675,7 @@ class AirdropClaimer:
         )
         
         # Simulated transaction hash
-        tx_hash = '0x' + ''.join(random.choices('0123456789abcdef', k=64))
+        tx_hash = '0x' + ''.join([random.choice('0123456789abcdef') for _ in range(64)])
         
         # Simulate network delay
         await asyncio.sleep(random.uniform(1.0, 3.0))
