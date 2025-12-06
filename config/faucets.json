@@ -1,0 +1,83 @@
+{
+  "solana": [
+    {
+      "name": "Solana Faucet (Official)",
+      "url": "https://faucet.solana.com",
+      "network": "devnet",
+      "amount": "1-2 SOL",
+      "cooldown_hours": 24,
+      "requires_captcha": true,
+      "method": "POST",
+      "endpoint": "/api/request"
+    },
+    {
+      "name": "QuickNode Faucet",
+      "url": "https://faucet.quicknode.com/solana/devnet",
+      "network": "devnet",
+      "amount": "0.5 SOL",
+      "cooldown_hours": 12,
+      "requires_captcha": true,
+      "method": "POST"
+    },
+    {
+      "name": "Solfate Faucet",
+      "url": "https://solfate.com/faucet",
+      "network": "devnet",
+      "amount": "1 SOL",
+      "cooldown_hours": 24,
+      "requires_captcha": false,
+      "method": "POST"
+    },
+    {
+      "name": "Stakely Faucet",
+      "url": "https://stakely.io/en/faucet/solana-sol",
+      "network": "testnet",
+      "amount": "0.5 SOL",
+      "cooldown_hours": 24,
+      "requires_captcha": true,
+      "method": "POST"
+    }
+  ],
+  "ethereum": [
+    {
+      "name": "Sepolia Faucet (Alchemy)",
+      "url": "https://sepoliafaucet.com",
+      "network": "sepolia",
+      "amount": "0.5 ETH",
+      "cooldown_hours": 24,
+      "requires_captcha": true,
+      "method": "POST"
+    },
+    {
+      "name": "Sepolia Faucet (Infura)",
+      "url": "https://www.infura.io/faucet/sepolia",
+      "network": "sepolia",
+      "amount": "0.5 ETH",
+      "cooldown_hours": 24,
+      "requires_captcha": true,
+      "method": "POST"
+    }
+  ],
+  "arbitrum": [
+    {
+      "name": "Arbitrum Sepolia Faucet",
+      "url": "https://faucet.quicknode.com/arbitrum/sepolia",
+      "network": "sepolia",
+      "amount": "0.1 ETH",
+      "cooldown_hours": 24,
+      "requires_captcha": true,
+      "method": "POST"
+    }
+  ],
+  "base": [
+    {
+      "name": "Base Sepolia Faucet",
+      "url": "https://faucet.quicknode.com/base/sepolia",
+      "network": "sepolia",
+      "amount": "0.1 ETH",
+      "cooldown_hours": 24,
+      "requires_captcha": true,
+      "method": "POST"
+    }
+  ]
+}
