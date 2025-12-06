@@ -19,6 +19,7 @@ from abc import ABC, abstractmethod
 
 from utils.database import Wallet, WalletAction, get_db_session
 from utils.logging_config import get_logger, log_transaction
+from modules.anti_detection import AntiDetection
 
 logger = get_logger(__name__)
 
@@ -345,10 +346,17 @@ class SolanaActionAdapter(ActionAdapter):
 class ActionPipeline:
     """Pipeline for executing eligibility actions with human-like behavior."""
     
-    def __init__(self):
-        """Initialize action pipeline."""
+    def __init__(self, anti_detection: Optional[AntiDetection] = None):
+        """Initialize action pipeline.
+        
+        Args:
+            anti_detection: Optional anti-detection coordinator
+        """
         self.adapters: Dict[str, ActionAdapter] = {}
         self._initialize_adapters()
+        
+        # Initialize anti-detection
+        self.anti_detection = anti_detection or AntiDetection()
         
         # Settings
         self.enable_staking = os.getenv("ENABLE_STAKING", "true").lower() == "true"
@@ -389,14 +397,13 @@ class ActionPipeline:
         )
     
     def _add_human_jitter(self) -> float:
-        """Calculate human-like delay with jitter.
+        """Calculate human-like delay with jitter using anti-detection.
         
         Returns:
             Delay in seconds
         """
         base_delay = random.uniform(self.min_delay, self.max_delay)
-        jitter = random.gauss(0, base_delay * 0.2)  # 20% stddev
-        return max(self.min_delay, base_delay + jitter)
+        return self.anti_detection.get_jittered_delay(base_delay, distribution='gaussian')
     
     def _check_cooldown(self, wallet: Wallet, action_type: str) -> bool:
         """Check if action is in cooldown period.
@@ -438,6 +445,16 @@ class ActionPipeline:
         Returns:
             True if successful
         """
+        # Check if we should skip this action for anti-detection
+        if self.anti_detection.should_skip_action(wallet.address):
+            logger.info(
+                "action_skipped_for_anti_detection",
+                wallet=wallet.address,
+                action_type=action_type,
+                chain=chain
+            )
+            return False
+        
         # Check if adapter exists
         adapter = self.adapters.get(chain)
         if not adapter:

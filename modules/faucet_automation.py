@@ -30,6 +30,7 @@ from utils.database import (
 )
 from utils.logging_config import get_logger, log_faucet_request
 from modules.captcha_broker import CaptchaBroker
+from modules.anti_detection import AntiDetection
 
 logger = get_logger(__name__)
 
@@ -100,7 +101,8 @@ class FaucetWorker:
         self,
         config: FaucetConfig,
         captcha_broker: CaptchaBroker,
-        proxy_list: Optional[List[str]] = None
+        proxy_list: Optional[List[str]] = None,
+        anti_detection: Optional[AntiDetection] = None
     ):
         """Initialize faucet worker.
         
@@ -108,11 +110,15 @@ class FaucetWorker:
             config: Faucet configuration
             captcha_broker: Captcha solving broker
             proxy_list: Optional list of proxy URLs
+            anti_detection: Optional anti-detection coordinator
         """
         self.config = config
         self.captcha_broker = captcha_broker
         self.proxy_list = proxy_list or []
         self.current_proxy_index = 0
+        
+        # Initialize anti-detection if not provided
+        self.anti_detection = anti_detection or AntiDetection(proxy_list=proxy_list)
         
         # Worker settings
         self.timeout = int(os.getenv("FAUCET_REQUEST_TIMEOUT", "30"))
@@ -276,13 +282,27 @@ class FaucetWorker:
                 )
                 return True
         
-        # Check cooldown
+        # Check if we should skip this faucet claim for anti-detection
+        if self.anti_detection.should_skip_faucet(wallet.address):
+            logger.info(
+                "faucet_skipped_for_anti_detection",
+                wallet=wallet.address,
+                chain=chain,
+                faucet=faucet_name
+            )
+            return False
+        
+        # Check cooldown with over-cooldown jitter
         cooldown_hours = faucet_config.get('cooldown_hours', 24)
+        extended_cooldown_hours = self.anti_detection.get_overcooldown_delay(
+            cooldown_hours * 3600
+        ) / 3600.0
+        
         in_cooldown, cooldown_until = self._check_cooldown(
             faucet_name,
             wallet.address,
             chain,
-            cooldown_hours
+            int(extended_cooldown_hours)
         )
         
         if in_cooldown:
@@ -420,14 +440,33 @@ class FaucetWorker:
             payload['captcha'] = captcha_token
             payload['g-recaptcha-response'] = captcha_token
         
-        # Get proxy if available
-        proxy = self._get_next_proxy()
+        # Get anti-detection request config
+        request_config = self.anti_detection.get_request_config(
+            wallet_address=address,
+            shard_id=None,
+            traffic_type='faucet'
+        )
+        
+        if not request_config['should_proceed']:
+            logger.info(
+                "faucet_request_delayed_by_anti_detection",
+                address=address,
+                delay_seconds=request_config.get('delay_seconds', 0)
+            )
+            if request_config.get('delay_seconds', 0) > 0:
+                await asyncio.sleep(min(request_config['delay_seconds'], 60))
+            return False
+        
+        proxy = request_config.get('proxy') or self._get_next_proxy()
+        headers = request_config.get('headers', {})
         
         # Add jitter before request
         if self.config.global_settings.get('enable_jitter', True):
             jitter_min = self.config.global_settings.get('jitter_min', 1)
             jitter_max = self.config.global_settings.get('jitter_max', 30)
-            await asyncio.sleep(random.uniform(jitter_min, jitter_max))
+            base_delay = random.uniform(jitter_min, jitter_max)
+            jittered_delay = self.anti_detection.get_jittered_delay(base_delay)
+            await asyncio.sleep(jittered_delay)
         
         # Make request
         timeout = aiohttp.ClientTimeout(total=self.timeout)
@@ -437,8 +476,17 @@ class FaucetWorker:
                     async with session.post(
                         url,
                         json=payload,
-                        proxy=proxy
+                        proxy=proxy,
+                        headers=headers
                     ) as response:
+                        # Record request outcome for auto-throttle
+                        success = response.status in [200, 201]
+                        self.anti_detection.record_request_outcome(
+                            identifier=f"faucet_{address[:10]}",
+                            success=success,
+                            status_code=response.status
+                        )
+                        
                         # Handle specific status codes
                         if response.status == 429:
                             error_text = await response.text()
@@ -458,13 +506,22 @@ class FaucetWorker:
                             )
                             raise Exception(f"Server error {response.status}: {error_text[:100]}")
                         
-                        return response.status in [200, 201]
+                        return success
                 else:
                     async with session.get(
                         url,
                         params=payload,
-                        proxy=proxy
+                        proxy=proxy,
+                        headers=headers
                     ) as response:
+                        # Record request outcome for auto-throttle
+                        success = response.status in [200, 201]
+                        self.anti_detection.record_request_outcome(
+                            identifier=f"faucet_{address[:10]}",
+                            success=success,
+                            status_code=response.status
+                        )
+                        
                         # Handle specific status codes
                         if response.status == 429:
                             error_text = await response.text()
@@ -520,10 +577,14 @@ class FaucetOrchestrator:
             os.getenv("FAUCET_WORKER_CONCURRENCY", "5")
         )
         
+        # Initialize anti-detection coordinator
+        self.anti_detection = AntiDetection(proxy_list=self.proxy_list)
+        
         self.worker = FaucetWorker(
             self.config,
             self.captcha_broker,
-            self.proxy_list
+            self.proxy_list,
+            self.anti_detection
         )
     
     async def fund_wallet(
