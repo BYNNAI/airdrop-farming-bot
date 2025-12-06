@@ -17,9 +17,19 @@ from datetime import datetime, timedelta
 from typing import List, Dict, Optional, Any
 from abc import ABC, abstractmethod
 
+from web3 import Web3
+from solana.rpc.async_api import AsyncClient
+from solders.keypair import Keypair
+import base58
+
 from utils.database import Wallet, WalletAction, get_db_session
 from utils.logging_config import get_logger, log_transaction
 from modules.anti_detection import AntiDetection
+from modules.wallet_manager import WalletManager
+from modules.protocols.uniswap import UniswapIntegration
+from modules.protocols.lido import LidoStakingIntegration
+from modules.protocols.bridges import BridgeIntegration
+from modules.protocols.jupiter import JupiterIntegration
 
 logger = get_logger(__name__)
 
@@ -113,21 +123,57 @@ class ActionAdapter(ABC):
 class EVMActionAdapter(ActionAdapter):
     """Action adapter for EVM-compatible chains."""
     
-    def __init__(self, chain: str, rpc_url: str):
+    def __init__(self, chain: str, rpc_url: str, wallet_manager: Optional[WalletManager] = None):
         """Initialize EVM adapter.
         
         Args:
             chain: Chain identifier
             rpc_url: RPC endpoint URL
+            wallet_manager: WalletManager instance for private key derivation
         """
         self.chain = chain
         self.rpc_url = rpc_url
+        self.wallet_manager = wallet_manager
         
-        logger.info(
-            "evm_adapter_initialized",
-            chain=chain,
-            rpc_url=rpc_url
-        )
+        # Initialize Web3
+        self.web3 = Web3(Web3.HTTPProvider(rpc_url))
+        
+        # Check connection
+        try:
+            self.web3.eth.block_number
+            logger.info(
+                "evm_adapter_initialized",
+                chain=chain,
+                rpc_url=rpc_url,
+                connected=True
+            )
+        except Exception as e:
+            logger.warning(
+                "evm_adapter_connection_failed",
+                chain=chain,
+                rpc_url=rpc_url,
+                error=str(e)
+            )
+        
+        # Initialize protocol integrations
+        self.uniswap = None
+        self.lido = None
+        self.bridge = None
+        
+        try:
+            self.uniswap = UniswapIntegration(self.web3, chain)
+        except Exception as e:
+            logger.debug("uniswap_not_available", chain=chain, error=str(e))
+        
+        try:
+            self.lido = LidoStakingIntegration(self.web3, chain)
+        except Exception as e:
+            logger.debug("lido_not_available", chain=chain, error=str(e))
+        
+        try:
+            self.bridge = BridgeIntegration(self.web3, chain)
+        except Exception as e:
+            logger.debug("bridge_not_available", chain=chain, error=str(e))
     
     async def stake(
         self,
@@ -145,19 +191,48 @@ class EVMActionAdapter(ActionAdapter):
             validator=validator
         )
         
-        # Placeholder implementation
-        # In production, integrate with Web3.py and staking contracts
-        await asyncio.sleep(random.uniform(2, 5))
+        # Check if Lido staking is available
+        if not self.lido:
+            logger.warning(
+                "lido_not_configured",
+                chain=self.chain
+            )
+            # Fall back to mock for chains without Lido
+            await asyncio.sleep(random.uniform(2, 5))
+            mock_tx_hash = "0x" + "00" * 31 + "01_MOCK_STAKE"
+            return {
+                'success': True,
+                'tx_hash': mock_tx_hash,
+                'amount': amount,
+                'validator': validator
+            }
         
-        # Generate a clearly marked mock transaction hash
-        mock_tx_hash = "0x" + "00" * 31 + "01_MOCK_STAKE"
+        # Get private key
+        if not self.wallet_manager:
+            raise ValueError("WalletManager not configured for real transactions")
         
-        return {
-            'success': True,
-            'tx_hash': mock_tx_hash,
-            'amount': amount,
-            'validator': validator
-        }
+        private_key = self.wallet_manager.get_private_key(wallet.address, 'evm')
+        if not private_key:
+            raise ValueError(f"Could not derive private key for wallet {wallet.address}")
+        
+        try:
+            # Execute real staking through Lido
+            result = await self.lido.stake(
+                amount=amount,
+                wallet_address=wallet.address,
+                private_key=private_key,
+                referral=validator  # Use validator as referral address if provided
+            )
+            
+            return result
+        except Exception as e:
+            logger.error(
+                "stake_failed",
+                chain=self.chain,
+                wallet=wallet.address,
+                error=str(e)
+            )
+            raise
     
     async def swap(
         self,
@@ -177,20 +252,55 @@ class EVMActionAdapter(ActionAdapter):
             amount=amount
         )
         
-        # Placeholder implementation
-        # In production, integrate with Uniswap/PancakeSwap/etc.
-        await asyncio.sleep(random.uniform(2, 5))
+        # Check if Uniswap is available
+        if not self.uniswap:
+            logger.warning(
+                "uniswap_not_configured",
+                chain=self.chain
+            )
+            # Fall back to mock for chains without Uniswap
+            await asyncio.sleep(random.uniform(2, 5))
+            mock_tx_hash = "0x" + "11" * 31 + "02_MOCK_SWAP"
+            return {
+                'success': True,
+                'tx_hash': mock_tx_hash,
+                'from_token': from_token,
+                'to_token': to_token,
+                'amount_in': amount,
+                'amount_out': amount * random.uniform(0.95, 1.05)
+            }
         
-        mock_tx_hash = "0x" + "11" * 31 + "02_MOCK_SWAP"
+        # Get private key
+        if not self.wallet_manager:
+            raise ValueError("WalletManager not configured for real transactions")
         
-        return {
-            'success': True,
-            'tx_hash': mock_tx_hash,
-            'from_token': from_token,
-            'to_token': to_token,
-            'amount_in': amount,
-            'amount_out': amount * random.uniform(0.95, 1.05)
-        }
+        private_key = self.wallet_manager.get_private_key(wallet.address, 'evm')
+        if not private_key:
+            raise ValueError(f"Could not derive private key for wallet {wallet.address}")
+        
+        try:
+            # Get slippage from kwargs or use default
+            slippage_percent = kwargs.get('slippage_percent', 3.0)
+            
+            # Execute real swap through Uniswap
+            result = await self.uniswap.swap(
+                from_token=from_token,
+                to_token=to_token,
+                amount_in=amount,
+                wallet_address=wallet.address,
+                private_key=private_key,
+                slippage_percent=slippage_percent
+            )
+            
+            return result
+        except Exception as e:
+            logger.error(
+                "swap_failed",
+                chain=self.chain,
+                wallet=wallet.address,
+                error=str(e)
+            )
+            raise
     
     async def bridge(
         self,
@@ -208,19 +318,53 @@ class EVMActionAdapter(ActionAdapter):
             amount=amount
         )
         
-        # Placeholder implementation
-        # In production, integrate with bridge protocols
-        await asyncio.sleep(random.uniform(5, 10))
+        # Check if bridge is available
+        if not self.bridge:
+            logger.warning(
+                "bridge_not_configured",
+                chain=self.chain
+            )
+            # Fall back to mock for chains without bridge
+            await asyncio.sleep(random.uniform(5, 10))
+            mock_tx_hash = "0x" + "22" * 31 + "03_MOCK_BRIDGE"
+            return {
+                'success': True,
+                'tx_hash': mock_tx_hash,
+                'from_chain': self.chain,
+                'to_chain': to_chain,
+                'amount': amount
+            }
         
-        mock_tx_hash = "0x" + "22" * 31 + "03_MOCK_BRIDGE"
+        # Get private key
+        if not self.wallet_manager:
+            raise ValueError("WalletManager not configured for real transactions")
         
-        return {
-            'success': True,
-            'tx_hash': mock_tx_hash,
-            'from_chain': self.chain,
-            'to_chain': to_chain,
-            'amount': amount
-        }
+        private_key = self.wallet_manager.get_private_key(wallet.address, 'evm')
+        if not private_key:
+            raise ValueError(f"Could not derive private key for wallet {wallet.address}")
+        
+        try:
+            # Get bridge type from kwargs if specified
+            bridge_type = kwargs.get('bridge_type')
+            
+            # Execute real bridge transaction
+            result = await self.bridge.bridge(
+                to_chain=to_chain,
+                amount=amount,
+                wallet_address=wallet.address,
+                private_key=private_key,
+                bridge_type=bridge_type
+            )
+            
+            return result
+        except Exception as e:
+            logger.error(
+                "bridge_failed",
+                chain=self.chain,
+                wallet=wallet.address,
+                error=str(e)
+            )
+            raise
     
     async def get_balance(
         self,
@@ -228,22 +372,80 @@ class EVMActionAdapter(ActionAdapter):
         token: Optional[str] = None
     ) -> float:
         """Get wallet balance."""
-        # Placeholder implementation
-        # In production, query blockchain via Web3.py
-        return random.uniform(0.1, 10.0)
+        try:
+            if token is None or token.upper() in ['ETH', 'NATIVE']:
+                # Get native token balance
+                balance_wei = self.web3.eth.get_balance(wallet.address)
+                balance = self.web3.from_wei(balance_wei, 'ether')
+            else:
+                # Get ERC20 token balance
+                token_address = Web3.to_checksum_address(token)
+                
+                # Minimal ERC20 ABI
+                erc20_abi = [
+                    {
+                        "inputs": [{"internalType": "address", "name": "account", "type": "address"}],
+                        "name": "balanceOf",
+                        "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+                        "stateMutability": "view",
+                        "type": "function"
+                    },
+                    {
+                        "inputs": [],
+                        "name": "decimals",
+                        "outputs": [{"internalType": "uint8", "name": "", "type": "uint8"}],
+                        "stateMutability": "view",
+                        "type": "function"
+                    }
+                ]
+                
+                token_contract = self.web3.eth.contract(
+                    address=token_address,
+                    abi=erc20_abi
+                )
+                
+                balance_raw = token_contract.functions.balanceOf(wallet.address).call()
+                decimals = token_contract.functions.decimals().call()
+                balance = balance_raw / (10 ** decimals)
+            
+            logger.debug(
+                "balance_checked",
+                chain=self.chain,
+                wallet=wallet.address,
+                token=token or 'native',
+                balance=balance
+            )
+            
+            return balance
+        except Exception as e:
+            logger.error(
+                "balance_check_failed",
+                chain=self.chain,
+                wallet=wallet.address,
+                error=str(e)
+            )
+            return 0.0
 
 
 class SolanaActionAdapter(ActionAdapter):
     """Action adapter for Solana."""
     
-    def __init__(self, rpc_url: str):
+    def __init__(self, rpc_url: str, wallet_manager: Optional[WalletManager] = None):
         """Initialize Solana adapter.
         
         Args:
             rpc_url: Solana RPC endpoint
+            wallet_manager: WalletManager instance for private key derivation
         """
         self.chain = "solana"
         self.rpc_url = rpc_url
+        self.wallet_manager = wallet_manager
+        
+        # Initialize Solana RPC client
+        self.client = AsyncClient(rpc_url)
+        
+        # Initialize Jupiter integration
+        self.jupiter = JupiterIntegration(self.client)
         
         logger.info(
             "solana_adapter_initialized",
@@ -266,15 +468,51 @@ class SolanaActionAdapter(ActionAdapter):
             validator=validator
         )
         
-        # Placeholder
-        await asyncio.sleep(random.uniform(2, 5))
+        # Get private key
+        if not self.wallet_manager:
+            logger.warning("wallet_manager_not_configured_using_mock")
+            # Fall back to mock
+            await asyncio.sleep(random.uniform(2, 5))
+            return {
+                'success': True,
+                'tx_hash': 'solana_stake_' + 'a' * 64,
+                'amount': amount,
+                'validator': validator
+            }
         
-        return {
-            'success': True,
-            'tx_hash': 'solana_stake_' + 'a' * 64,
-            'amount': amount,
-            'validator': validator
-        }
+        private_key_b58 = self.wallet_manager.get_private_key(wallet.address, 'solana')
+        if not private_key_b58:
+            raise ValueError(f"Could not derive private key for wallet {wallet.address}")
+        
+        try:
+            # Decode private key
+            private_key_bytes = base58.b58decode(private_key_b58)
+            keypair = Keypair.from_bytes(private_key_bytes)
+            
+            # For now, implement staking as a placeholder since proper Solana staking
+            # requires stake account creation and delegation which is more complex
+            # In production, this should use solana.rpc.api methods to create stake accounts
+            logger.warning(
+                "solana_staking_not_fully_implemented",
+                message="Using mock staking for Solana - full implementation requires stake account creation"
+            )
+            
+            await asyncio.sleep(random.uniform(2, 5))
+            
+            return {
+                'success': True,
+                'tx_hash': 'solana_stake_' + 'a' * 64,
+                'amount': amount,
+                'validator': validator
+            }
+        except Exception as e:
+            logger.error(
+                "stake_failed",
+                chain=self.chain,
+                wallet=wallet.address,
+                error=str(e)
+            )
+            raise
     
     async def swap(
         self,
@@ -294,17 +532,50 @@ class SolanaActionAdapter(ActionAdapter):
             amount=amount
         )
         
-        # Placeholder
-        await asyncio.sleep(random.uniform(2, 5))
+        # Get private key
+        if not self.wallet_manager:
+            logger.warning("wallet_manager_not_configured_using_mock")
+            # Fall back to mock
+            await asyncio.sleep(random.uniform(2, 5))
+            return {
+                'success': True,
+                'tx_hash': 'solana_swap_' + 'b' * 64,
+                'from_token': from_token,
+                'to_token': to_token,
+                'amount_in': amount,
+                'amount_out': amount * random.uniform(0.95, 1.05)
+            }
         
-        return {
-            'success': True,
-            'tx_hash': 'solana_swap_' + 'b' * 64,
-            'from_token': from_token,
-            'to_token': to_token,
-            'amount_in': amount,
-            'amount_out': amount * random.uniform(0.95, 1.05)
-        }
+        private_key_b58 = self.wallet_manager.get_private_key(wallet.address, 'solana')
+        if not private_key_b58:
+            raise ValueError(f"Could not derive private key for wallet {wallet.address}")
+        
+        try:
+            # Decode private key
+            private_key_bytes = base58.b58decode(private_key_b58)
+            keypair = Keypair.from_bytes(private_key_bytes)
+            
+            # Get slippage from kwargs
+            slippage_percent = kwargs.get('slippage_percent', 3.0)
+            
+            # Execute real swap through Jupiter
+            result = await self.jupiter.swap(
+                from_token=from_token,
+                to_token=to_token,
+                amount=amount,
+                keypair=keypair,
+                slippage_percent=slippage_percent
+            )
+            
+            return result
+        except Exception as e:
+            logger.error(
+                "swap_failed",
+                chain=self.chain,
+                wallet=wallet.address,
+                error=str(e)
+            )
+            raise
     
     async def bridge(
         self,
@@ -322,7 +593,13 @@ class SolanaActionAdapter(ActionAdapter):
             amount=amount
         )
         
-        # Placeholder
+        # Solana bridging via Wormhole/Portal requires complex integration
+        # For now, use placeholder implementation
+        logger.warning(
+            "solana_bridging_not_fully_implemented",
+            message="Solana bridging requires Wormhole/Portal integration"
+        )
+        
         await asyncio.sleep(random.uniform(5, 10))
         
         return {
@@ -339,19 +616,53 @@ class SolanaActionAdapter(ActionAdapter):
         token: Optional[str] = None
     ) -> float:
         """Get SOL balance."""
-        # Placeholder
-        return random.uniform(0.1, 10.0)
+        try:
+            from solders.pubkey import Pubkey as SoldersPubkey
+            
+            if token is None or token.upper() in ['SOL', 'NATIVE']:
+                # Get native SOL balance
+                pubkey = SoldersPubkey.from_string(wallet.address)
+                response = await self.client.get_balance(pubkey)
+                balance_lamports = response.value
+                balance = balance_lamports / 1e9  # Convert lamports to SOL
+            else:
+                # SPL token balance would require token account lookup
+                logger.warning(
+                    "spl_token_balance_not_implemented",
+                    message="SPL token balance checking not yet implemented"
+                )
+                balance = 0.0
+            
+            logger.debug(
+                "balance_checked",
+                chain=self.chain,
+                wallet=wallet.address,
+                token=token or 'SOL',
+                balance=balance
+            )
+            
+            return balance
+        except Exception as e:
+            logger.error(
+                "balance_check_failed",
+                chain=self.chain,
+                wallet=wallet.address,
+                error=str(e)
+            )
+            return 0.0
 
 
 class ActionPipeline:
     """Pipeline for executing eligibility actions with human-like behavior."""
     
-    def __init__(self, anti_detection: Optional[AntiDetection] = None):
+    def __init__(self, anti_detection: Optional[AntiDetection] = None, wallet_manager: Optional[WalletManager] = None):
         """Initialize action pipeline.
         
         Args:
             anti_detection: Optional anti-detection coordinator
+            wallet_manager: Optional WalletManager for private key derivation
         """
+        self.wallet_manager = wallet_manager
         self.adapters: Dict[str, ActionAdapter] = {}
         self._initialize_adapters()
         
@@ -383,13 +694,13 @@ class ActionPipeline:
         
         for chain, rpc_url in evm_chains:
             if rpc_url:
-                self.adapters[chain] = EVMActionAdapter(chain, rpc_url)
+                self.adapters[chain] = EVMActionAdapter(chain, rpc_url, self.wallet_manager)
         
         # Solana
         solana_rpc = os.getenv('SOLANA_RPC_DEVNET') or os.getenv('SOLANA_RPC_TESTNET')
         if solana_rpc:
-            self.adapters['solana_devnet'] = SolanaActionAdapter(solana_rpc)
-            self.adapters['solana_testnet'] = SolanaActionAdapter(solana_rpc)
+            self.adapters['solana_devnet'] = SolanaActionAdapter(solana_rpc, self.wallet_manager)
+            self.adapters['solana_testnet'] = SolanaActionAdapter(solana_rpc, self.wallet_manager)
         
         logger.info(
             "adapters_initialized",
