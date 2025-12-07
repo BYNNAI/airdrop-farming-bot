@@ -4,8 +4,15 @@ Pluggable captcha solving interface with multiple provider support.
 This module provides an abstraction layer for various captcha solving services
 including 2Captcha, AntiCaptcha, and manual solving with a unified interface.
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BYNNΛI - AirdropFarm
+Sophisticated multi-chain airdrop farming automation
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 Author: BYNNΛI
+Project: AirdropFarm
 License: MIT
+Repository: https://github.com/BYNNAI/airdrop-farming-bot
 """
 
 import os

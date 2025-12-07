@@ -1,9 +1,18 @@
 #!/usr/bin/env python3
 """
 Airdrop Farming - Multi-chain testnet automation
-By BYNNΛI
 
 Main entry point for the airdrop farming system.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BYNNΛI - AirdropFarm
+Sophisticated multi-chain airdrop farming automation
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Author: BYNNΛI
+Project: AirdropFarm
+License: MIT
+Repository: https://github.com/BYNNAI/airdrop-farming-bot
 """
 
 import sys

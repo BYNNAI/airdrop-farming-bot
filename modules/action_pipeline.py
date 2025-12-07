@@ -5,8 +5,15 @@ This module provides a framework for executing blockchain actions (staking, swap
 bridging) with human-like timing patterns, randomization, and anti-detection measures
 to maximize airdrop eligibility while avoiding Sybil detection.
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BYNNΛI - AirdropFarm
+Sophisticated multi-chain airdrop farming automation
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 Author: BYNNΛI
+Project: AirdropFarm
 License: MIT
+Repository: https://github.com/BYNNAI/airdrop-farming-bot
 """
 
 import os

@@ -4,8 +4,15 @@ Structured logging configuration with JSON output.
 This module configures structured logging using structlog with JSON formatting
 for production-grade observability and log aggregation.
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BYNNΛI - AirdropFarm
+Sophisticated multi-chain airdrop farming automation
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 Author: BYNNΛI
+Project: AirdropFarm
 License: MIT
+Repository: https://github.com/BYNNAI/airdrop-farming-bot
 """
 
 import os

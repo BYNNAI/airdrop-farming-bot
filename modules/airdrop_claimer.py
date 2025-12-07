@@ -7,8 +7,15 @@ This module provides functionality to:
 - Execute airdrop claims with multiple methods
 - Track claim status in database
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BYNNΛI - AirdropFarm
+Sophisticated multi-chain airdrop farming automation
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 Author: BYNNΛI
+Project: AirdropFarm
 License: MIT
+Repository: https://github.com/BYNNAI/airdrop-farming-bot
 """
 
 import os

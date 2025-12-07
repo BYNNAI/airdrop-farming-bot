@@ -4,8 +4,15 @@ Configuration settings for airdrop farming system.
 This module provides centralized configuration management with environment variable
 support for network settings, timing parameters, and behavioral patterns.
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BYNNΛI - AirdropFarm
+Sophisticated multi-chain airdrop farming automation
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 Author: BYNNΛI
+Project: AirdropFarm
 License: MIT
+Repository: https://github.com/BYNNAI/airdrop-farming-bot
 """
 
 import os
