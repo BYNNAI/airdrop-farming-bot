@@ -16,7 +16,6 @@ import os
 from typing import Dict, Any, Optional
 from web3 import Web3
 from web3.contract import Contract
-from eth_account import Account
 from utils.logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -147,6 +146,51 @@ class UniswapIntegration:
             abi=ERC20_ABI
         )
     
+    def _build_transaction_params(self, wallet: str, nonce: int, gas_limit: int) -> Dict[str, Any]:
+        """Build transaction parameters with EIP-1559 support.
+        
+        Args:
+            wallet: Wallet address
+            nonce: Transaction nonce
+            gas_limit: Gas limit
+            
+        Returns:
+            Transaction parameters dict
+        """
+        try:
+            # Try EIP-1559 transaction (preferred)
+            latest_block = self.web3.eth.get_block('latest')
+            base_fee = latest_block.get('baseFeePerGas', 0)
+            
+            if base_fee > 0:
+                # Chain supports EIP-1559
+                max_priority_fee = Web3.to_wei(2, 'gwei')
+                max_fee = (base_fee * 2) + max_priority_fee
+                
+                return {
+                    'from': wallet,
+                    'nonce': nonce,
+                    'gas': gas_limit,
+                    'maxFeePerGas': max_fee,
+                    'maxPriorityFeePerGas': max_priority_fee,
+                    'type': '0x2',  # EIP-1559 transaction
+                }
+        except Exception as e:
+            logger.debug(
+                "eip1559_not_supported",
+                chain=self.chain,
+                error=str(e)
+            )
+        
+        # Fallback to legacy transaction
+        return {
+            'from': wallet,
+            'nonce': nonce,
+            'gas': gas_limit,
+            'gasPrice': self.web3.eth.gas_price,
+            'type': '0x0',  # Legacy transaction
+        }
+    
     async def approve_token(
         self,
         token_address: str,
@@ -186,12 +230,9 @@ class UniswapIntegration:
         tx = token.functions.approve(
             self.router_address,
             amount
-        ).build_transaction({
-            'from': wallet,
-            'nonce': nonce,
-            'gas': 100000,
-            'gasPrice': self.web3.eth.gas_price,
-        })
+        ).build_transaction(
+            self._build_transaction_params(wallet, nonce, 100000)
+        )
         
         # Sign and send
         signed_tx = self.web3.eth.account.sign_transaction(tx, private_key)
@@ -244,7 +285,8 @@ class UniswapIntegration:
         amount_out_min = int(amounts_out[1] * (1 - self.slippage_tolerance))
         
         # Build swap transaction
-        deadline = self.web3.eth.get_block('latest')['timestamp'] + (deadline_minutes * 60)
+        latest_block = self.web3.eth.get_block('latest')
+        deadline = latest_block['timestamp'] + (deadline_minutes * 60)
         nonce = self.web3.eth.get_transaction_count(wallet)
         
         tx = self.router.functions.swapExactTokensForTokens(
@@ -253,12 +295,9 @@ class UniswapIntegration:
             path,
             wallet,
             deadline
-        ).build_transaction({
-            'from': wallet,
-            'nonce': nonce,
-            'gas': 250000,
-            'gasPrice': self.web3.eth.gas_price,
-        })
+        ).build_transaction(
+            self._build_transaction_params(wallet, nonce, 250000)
+        )
         
         # Sign and send
         signed_tx = self.web3.eth.account.sign_transaction(tx, private_key)
@@ -319,21 +358,19 @@ class UniswapIntegration:
         amount_out_min = int(amounts_out[1] * (1 - self.slippage_tolerance))
         
         # Build swap transaction
-        deadline = self.web3.eth.get_block('latest')['timestamp'] + (deadline_minutes * 60)
+        latest_block = self.web3.eth.get_block('latest')
+        deadline = latest_block['timestamp'] + (deadline_minutes * 60)
         nonce = self.web3.eth.get_transaction_count(wallet)
+        
+        tx_params = self._build_transaction_params(wallet, nonce, 250000)
+        tx_params['value'] = amount_in  # Add ETH value
         
         tx = self.router.functions.swapExactETHForTokens(
             amount_out_min,
             path,
             wallet,
             deadline
-        ).build_transaction({
-            'from': wallet,
-            'value': amount_in,
-            'nonce': nonce,
-            'gas': 250000,
-            'gasPrice': self.web3.eth.gas_price,
-        })
+        ).build_transaction(tx_params)
         
         # Sign and send
         signed_tx = self.web3.eth.account.sign_transaction(tx, private_key)
