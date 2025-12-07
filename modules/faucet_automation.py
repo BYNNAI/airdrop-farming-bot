@@ -593,9 +593,16 @@ class FaucetWorker:
             # Try to extract error message from response
             try:
                 error_text = await response.text()
-                error_json = await response.json() if response.content_type == 'application/json' else None
-                error_msg = error_json.get('error', error_text[:100]) if error_json else error_text[:100]
-            except:
+                # Try to parse as JSON if content type indicates it
+                error_msg = error_text[:100]
+                if response.content_type == 'application/json' and error_text:
+                    try:
+                        import json
+                        error_json = json.loads(error_text)
+                        error_msg = error_json.get('error', error_json.get('message', error_text[:100]))
+                    except json.JSONDecodeError:
+                        pass  # Use text as-is
+            except Exception as e:
                 error_msg = f"HTTP {response.status}"
             
             logger.warning(
@@ -616,7 +623,7 @@ class FaucetWorker:
                     status=response.status,
                     response_preview=response_text[:200] if response_text else "empty"
                 )
-            except:
+            except Exception:
                 pass
         
         return success
