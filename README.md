@@ -87,11 +87,6 @@ This system is designed for **testnet environments only**. Always comply with pr
   - Exponential backoff for repeated issues
   - Automatic recovery after cooldown
 
-### 🛠️ Developer Experience
-- **Rich CLI**: Beautiful command-line interface with progress bars and tables
-- **Concurrency Control**: Configurable worker pools with bounded semaphores
-- **Environment-Based Config**: All settings via .env file
-- **Comprehensive Documentation**: Setup, usage, configuration guides
 
 ## 🛠️ Technology Stack
 
