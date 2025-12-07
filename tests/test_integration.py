@@ -77,15 +77,33 @@ def test_faucet_config_loading():
     chains = config.get_all_chains()
     assert len(chains) > 0, "Should have loaded chains"
     
-    # Verify faucets for a chain
-    eth_faucets = config.get_chain_faucets('ethereum_sepolia')
-    assert len(eth_faucets) > 0, "Should have Ethereum Sepolia faucets"
+    # Verify chains configuration structure (including disabled faucets)
+    import yaml
+    with open(config.config_path, 'r') as f:
+        raw_config = yaml.safe_load(f)
     
-    # Verify priority sorting
-    priorities = [f.get('priority', 999) for f in eth_faucets]
-    assert priorities == sorted(priorities), "Faucets should be sorted by priority"
+    # Check that Ethereum Sepolia has faucets configured (even if disabled)
+    eth_all_faucets = raw_config['chains']['ethereum_sepolia']['faucets']
+    assert len(eth_all_faucets) > 0, "Should have Ethereum Sepolia faucets configured"
     
-    print(f"✓ Faucet configuration passed ({len(chains)} chains, {len(eth_faucets)} ETH faucets)")
+    # Check that Optimism Sepolia was added
+    assert 'optimism_sepolia' in raw_config['chains'], "Should have Optimism Sepolia chain"
+    opt_faucets = raw_config['chains']['optimism_sepolia']['faucets']
+    assert len(opt_faucets) > 0, "Should have Optimism Sepolia faucets configured"
+    
+    # Get only enabled faucets (may be 0 if all require web interaction)
+    eth_enabled = config.get_chain_faucets('ethereum_sepolia')
+    
+    # Verify priority sorting for enabled faucets (if any)
+    if len(eth_enabled) > 0:
+        priorities = [f.get('priority', 999) for f in eth_enabled]
+        assert priorities == sorted(priorities), "Faucets should be sorted by priority"
+    
+    # Verify Solana CLI faucet is enabled (should work via automation)
+    solana_enabled = config.get_chain_faucets('solana_devnet')
+    assert len(solana_enabled) > 0, "Solana devnet should have at least one enabled faucet (CLI)"
+    
+    print(f"✓ Faucet configuration passed ({len(chains)} chains, {len(eth_all_faucets)} ETH faucets configured, {len(eth_enabled)} enabled)")
 
 
 def test_captcha_broker():
